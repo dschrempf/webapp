@@ -1,0 +1,62 @@
+cabal-version:      3.0
+name:               webapp
+version:            0.1.0.0
+synopsis:           Plot something
+description:
+  Please see the README at <https://github.com/dschrempf/webapp#readme>
+
+category:           Math, Statistics
+homepage:           https://github.com/dschrempf/webapp#readme
+bug-reports:        https://github.com/dschrempf/webapp/issues
+author:             Dominik Schrempf
+maintainer:         dominik.schrempf@gmail.com
+copyright:          2022 Dominik Schrempf
+license:            GPL-3.0-or-later
+license-file:       License.txt
+build-type:         Simple
+extra-doc-files:
+  Changelog.md
+  Readme.md
+
+extra-source-files:
+data-files:
+
+source-repository head
+  location: https://github.com/dschrempf/webapp
+  type:     git
+
+common common
+  default-extensions:
+
+common lib
+  default-language: Haskell2010
+  ghc-options:      -Wall -Wunused-packages -Wredundant-constraints
+
+common test
+  default-language: Haskell2010
+  ghc-options:      -Wall -Wunused-packages -Wredundant-constraints -Werror
+
+common bench
+  default-language: Haskell2010
+  ghc-options:      -Wall -Wunused-packages -Wredundant-constraints -Werror
+
+common exec
+  default-language: Haskell2010
+  ghc-options:
+    -Wall -Wunused-packages -Wredundant-constraints -threaded -rtsopts
+    -with-rtsopts=-N -Werror
+
+executable webapp
+  import:          common, exec
+  main-is:         Main.hs
+  hs-source-dirs:  app
+  other-modules:   Vega
+  autogen-modules:
+  ghc-options:
+  build-depends:
+    , aeson
+    , base        >=4.7 && <5
+    , blaze-html
+    , hvega
+    , scotty
+    , text
