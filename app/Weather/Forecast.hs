@@ -1,11 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
--- Module      :  WeatherForecast
--- Description :  Forecast Austrian weather
+-- Module      :  Weather.Forecast
+-- Description :  Forecast weather
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
@@ -14,8 +13,11 @@
 -- Portability :  portable
 --
 -- Creation date: Thu Nov 24 11:53:58 2022.
-module WeatherForecast
-  ( DataPoint (..),
+module Weather.Forecast
+  ( Precipitation,
+    fromPrecipitation,
+    DataPoint (..),
+    WeatherData (..),
     predictWeather,
   )
 where
@@ -26,8 +28,6 @@ import qualified Data.ByteString.Lazy as Bl
 import Data.Csv hiding (defaultOptions)
 import Data.Maybe
 import qualified Data.Text as T
-import Data.Text.Lazy.Builder (toLazyText)
-import Data.Text.Lazy.Builder.RealFloat (FPFormat (..), formatRealFloat)
 import qualified Data.Vector as V
 import GHC.Generics
 import Mcmc
@@ -36,9 +36,7 @@ import Mcmc.Chain.Link
 import Mcmc.Chain.Trace
 import Numeric.AD.Double
 import Numeric.Natural
-import System.Random (getStdGen)
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
+import System.Random (newStdGen)
 
 data Precipitation = NoPrecipitation | PrecipitationAmount Double
   deriving (Show)
@@ -55,7 +53,7 @@ fromPrecipitation (PrecipitationAmount x) = x
 
 data DataPointRaw = DataPointRaw
   { station :: Natural,
-    time :: T.Text,
+    date :: T.Text,
     cloudinessRaw :: Maybe Double,
     preicpitationRaw :: Maybe Double,
     temperatureRaw :: Double
@@ -65,14 +63,15 @@ data DataPointRaw = DataPointRaw
 instance FromRecord DataPointRaw
 
 data DataPoint = DataPoint
-  { _cloudiness :: Double,
+  { _date :: T.Text,
+    _cloudiness :: Double,
     _precipitation :: Precipitation,
     _temperature :: Double
   }
   deriving (Show)
 
 fromDataPointRaw :: DataPointRaw -> DataPoint
-fromDataPointRaw (DataPointRaw _ _ cr pr tr) = DataPoint (fromMaybe 0 cr) (fromPrecipitationRaw pr) tr
+fromDataPointRaw (DataPointRaw _ d cr pr tr) = DataPoint d (fromMaybe 0 cr) (fromPrecipitationRaw pr) tr
 
 newtype WeatherData = WeatherData {getWeatherData :: V.Vector DataPoint}
 
@@ -115,7 +114,7 @@ lhPrec pj pm ps (PrecipitationAmount x) (PrecipitationAmount x') = Exp (1.0 - pj
 lhPrec pj pm ps (PrecipitationAmount x) NoPrecipitation = Exp pj * normal pm ps (auto x)
 
 lhStep :: (Scalar a ~ Double, RealFloat a, Mode a) => IG a -> DataPoint -> DataPoint -> Log a
-lhStep (IG cm cs pj pm ps tm ts) (DataPoint c p t) (DataPoint c' p' t') =
+lhStep (IG cm cs pj pm ps tm ts) (DataPoint _ c p t) (DataPoint _ c' p' t') =
   product'
     [ normal cm cs (auto $ c' - c),
       lhPrec pj pm ps p p',
@@ -186,30 +185,17 @@ predictPrecipitation (PrecipitationAmount x) pj pm ps
   where
     x' = x + pm
 
-predict :: DataPoint -> I -> DataPoint
-predict (DataPoint c p t) (IG cm _ pj pm ps tm _) = DataPoint c'' p' t'
+predictWithDate :: T.Text -> DataPoint -> I -> DataPoint
+predictWithDate dt (DataPoint _ c p t) (IG cm _ pj pm ps tm _) = DataPoint dt c'' p' t'
   where
     c' = c + cm
     c'' = if c' < 0 then 0 else c'
     p' = predictPrecipitation p pj pm ps
     t' = t + tm
 
-renderPoint :: DataPoint -> H.Html
-renderPoint (DataPoint c p t) = td c <> td (fromPrecipitation p) <> td t
-  where
-    r = H.toMarkup . toLazyText . formatRealFloat Fixed (Just 1)
-    td x = H.td (r x) H.! A.style "text-align: right;"
-
-renderForecast :: (DataPoint, DataPoint, WeatherData) -> H.Html
-renderForecast (p, t, xs) =
-  H.table $
-    H.tr (H.th mempty <> H.th "Cloudiness [%]" <> H.th "Precipitation [mm]" <> H.th "Temperature [°C]")
-      <> H.tr (H.th "Predicted" <> renderPoint p)
-      <> H.tr (H.th "Actual" <> renderPoint t)
-
-predictWeather :: IO H.Html
+predictWeather :: IO (DataPoint, DataPoint, WeatherData)
 predictWeather = do
-  g <- getStdGen
+  g <- newStdGen
   (d, t) <- readSampleData
   let s =
         Settings
@@ -231,5 +217,5 @@ predictWeather = do
       m = getMean xs
       dl = V.last $ getWeatherData d
   print m
-  let p = predict dl m
-  pure $ renderForecast (p, t, d)
+  let p = predictWithDate (_date dl) dl m
+  pure (p, t, d)

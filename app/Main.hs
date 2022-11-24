@@ -20,7 +20,7 @@ import Control.Monad.IO.Class
 import qualified Text.Blaze.Html.Renderer.Text as H
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import WeatherForecast
+import Weather.App
 import qualified Web.Scotty as S
 
 blaze :: H.Html -> S.ActionM ()
@@ -44,5 +44,5 @@ webapp x = H.docTypeHtml $ vegaHeader <> body x
 
 main :: IO ()
 main = S.scotty 3000 $ S.get "/" $ do
-  x <- liftIO predictWeather
+  x <- liftIO weatherApp
   blaze $ webapp x

@@ -54,7 +54,8 @@ executable webapp
   hs-source-dirs:  app
   other-modules:
     Vega
-    WeatherForecast
+    Weather.App
+    Weather.Forecast
 
   autogen-modules:
   ghc-options:
