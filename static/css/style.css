@@ -147,7 +147,9 @@ img {
 table {
   padding: 0.25em 0.25em;
   border: 1px solid #eee;
-  border-collapse: collapse
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 td,
