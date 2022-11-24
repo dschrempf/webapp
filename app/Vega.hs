@@ -13,15 +13,11 @@
 -- Creation date: Tue Nov 22 21:04:00 2022.
 module Vega
   ( embed,
-    stripPlot,
-    parallaxBreakdown,
-    gmagHistogramWithColor',
   )
 where
 
 import qualified Data.Aeson.Text as A
 import qualified Data.Text.Lazy as T
-import Graphics.Vega.Tutorials.VegaLite
 import Graphics.Vega.VegaLite
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -40,21 +36,3 @@ embed nm x =
             "vegaEmbed('#" <> nm <> "', spec);"
           ]
     spec = A.encodeToLazyText $ fromVL x
-
-gmagHistogramWithColor' :: VegaLite
-gmagHistogramWithColor' =
-  let enc =
-        encoding
-          . position X [PName "Gmag", PmType Quantitative, binning, axis]
-          . position Y [PAggregate Count, PmType Quantitative]
-          . color [MName "Cluster", MmType Nominal]
-
-      binning = PBin [Step 1]
-      axis = PAxis [AxValues (Numbers [0, 5 .. 20])]
-   in toVegaLite
-        [ gaiaData,
-          mark Bar [],
-          enc [],
-          height 500,
-          width 400
-        ]

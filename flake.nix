@@ -5,9 +5,13 @@
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+  inputs.mcmc.url = "github:dschrempf/mcmc";
+  inputs.mcmc.inputs.nixpkgs.follows = "nixpkgs";
+
   outputs =
     { self
     , flake-utils
+    , mcmc
     , nixpkgs
     }:
     flake-utils.lib.eachDefaultSystem (
@@ -24,6 +28,7 @@
               overrides = selfh: superh:
                 {
                   webapp = selfh.callCabal2nix "webapp" ./. rec { };
+                  mcmc = mcmc.packages.${system}.default;
                 };
             };
           }

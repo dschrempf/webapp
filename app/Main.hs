@@ -2,7 +2,7 @@
 
 -- |
 -- Module      :  Main
--- Description :  Sample homepage
+-- Description :  Sample webapp
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
@@ -16,6 +16,7 @@ module Main
   )
 where
 
+import Graphics.Vega.Tutorials.VegaLite (parallaxBreakdown)
 import qualified Text.Blaze.Html.Renderer.Text as H
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -35,11 +36,11 @@ vegaSources =
 vegaHeader :: H.Html
 vegaHeader = H.head $ mconcat [H.script mempty H.! A.src s | s <- vegaSources]
 
-vegaBody :: H.Html
-vegaBody = H.body $ embed "strip" stripPlot <> embed "parallax" parallaxBreakdown <> embed "gmag" gmagHistogramWithColor'
+webappBody :: H.Html
+webappBody = H.body $ embed "parallax" parallaxBreakdown
 
-vega :: H.Html
-vega = H.docTypeHtml $ vegaHeader <> vegaBody
+webapp :: H.Html
+webapp = H.docTypeHtml $ vegaHeader <> webappBody
 
 main :: IO ()
-main = S.scotty 3000 $ S.get "/" $ blaze vega
+main = S.scotty 3000 $ S.get "/" $ blaze webapp
