@@ -27,8 +27,9 @@
             haskellPackages = supern.haskell.packages.${ghcVersion}.override {
               overrides = selfh: superh:
                 {
-                  webapp = selfh.callCabal2nix "webapp" ./. rec { };
+                  hvega = selfh.callCabal2nix "hvega" ./modules/hvega rec { };
                   mcmc = mcmc.packages.${system}.default;
+                  webapp = selfh.callCabal2nix "webapp" ./. rec { };
                 };
             };
           }
