@@ -1,3 +1,0 @@
-[submodule "modules/hvega"]
-	path = modules/hvega
-	url = git@github.com:dschrempf/hvega.git
