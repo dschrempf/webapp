@@ -16,11 +16,11 @@ module Main
   )
 where
 
-import Graphics.Vega.Tutorials.VegaLite (parallaxBreakdown)
+import Control.Monad.IO.Class
 import qualified Text.Blaze.Html.Renderer.Text as H
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Vega
+import WeatherForecast
 import qualified Web.Scotty as S
 
 blaze :: H.Html -> S.ActionM ()
@@ -36,11 +36,13 @@ vegaSources =
 vegaHeader :: H.Html
 vegaHeader = H.head $ mconcat [H.script mempty H.! A.src s | s <- vegaSources]
 
-webappBody :: H.Html
-webappBody = H.body $ embed "parallax" parallaxBreakdown
+body :: H.Html -> H.Html
+body = H.body
 
-webapp :: H.Html
-webapp = H.docTypeHtml $ vegaHeader <> webappBody
+webapp :: H.Html -> H.Html
+webapp x = H.docTypeHtml $ vegaHeader <> body x
 
 main :: IO ()
-main = S.scotty 3000 $ S.get "/" $ blaze webapp
+main = S.scotty 3000 $ S.get "/" $ do
+  x <- liftIO predictWeather
+  blaze $ webapp x

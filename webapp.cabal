@@ -44,7 +44,9 @@ common exec
   default-language: Haskell2010
   ghc-options:
     -Wall -Wunused-packages -Wredundant-constraints -threaded -rtsopts
-    -with-rtsopts=-N -Werror
+    -with-rtsopts=-N
+
+---Werror
 
 executable webapp
   import:          common, exec
@@ -61,8 +63,12 @@ executable webapp
     , aeson
     , base        >=4.7 && <5
     , blaze-html
+    , bytestring
+    , cassava
     , hvega
+    , lens
     , mcmc
+    , random
     , scotty
     , text
     , vector

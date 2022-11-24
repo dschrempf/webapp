@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -12,56 +15,97 @@
 --
 -- Creation date: Thu Nov 24 11:53:58 2022.
 module WeatherForecast
-  (
+  ( DataPoint (..),
+    predictWeather,
   )
 where
 
+import Control.Lens
+import Data.Aeson.TH
+import qualified Data.ByteString.Lazy as Bl
+import Data.Csv hiding (defaultOptions)
+import Data.Maybe
+import qualified Data.Text as T
+import Data.Text.Lazy.Builder (toLazyText)
+import Data.Text.Lazy.Builder.RealFloat (FPFormat (..), formatRealFloat)
 import qualified Data.Vector as V
+import GHC.Generics
 import Mcmc
+import Mcmc.Chain.Chain
+import Mcmc.Chain.Link
+import Mcmc.Chain.Trace
 import Numeric.AD.Double
+import Numeric.Natural
+import System.Random (getStdGen)
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
 
 data Precipitation = NoPrecipitation | PrecipitationAmount Double
+  deriving (Show)
 
--- constrainPrecipitation :: RealFloat a => PriorFunctionG (Precipitation a) a
--- constrainPrecipitation NoPrecipitation = 1.0
--- constrainPrecipitation (PrecipitationAmount x) = positive x
+fromPrecipitationRaw :: Maybe Double -> Precipitation
+fromPrecipitationRaw Nothing = NoPrecipitation
+fromPrecipitationRaw (Just x)
+  | x <= 0 = NoPrecipitation
+  | otherwise = PrecipitationAmount x
+
+fromPrecipitation :: Precipitation -> Double
+fromPrecipitation NoPrecipitation = 0
+fromPrecipitation (PrecipitationAmount x) = x
+
+data DataPointRaw = DataPointRaw
+  { station :: Natural,
+    time :: T.Text,
+    cloudinessRaw :: Maybe Double,
+    preicpitationRaw :: Maybe Double,
+    temperatureRaw :: Double
+  }
+  deriving (Generic)
+
+instance FromRecord DataPointRaw
 
 data DataPoint = DataPoint
-  { cloudiness :: Double,
-    preciptiation :: Precipitation,
-    temperature :: Double
+  { _cloudiness :: Double,
+    _precipitation :: Precipitation,
+    _temperature :: Double
   }
+  deriving (Show)
 
--- constrainDataPoint :: RealFloat a => PriorFunctionG (DataPoint a) a
--- constrainDataPoint (DataPoint c p t) =
---   product'
---     [ bounded 0 100 c,
---       constrainPrecipitation p
---     ]
--- {-# SPECIALIZE constrainDataPoint :: PriorFunctionG (DataPoint Double) Double #-}
+fromDataPointRaw :: DataPointRaw -> DataPoint
+fromDataPointRaw (DataPointRaw _ _ cr pr tr) = DataPoint (fromMaybe 0 cr) (fromPrecipitationRaw pr) tr
 
-newtype WeatherData = WeatherData (V.Vector DataPoint)
+newtype WeatherData = WeatherData {getWeatherData :: V.Vector DataPoint}
 
-data I a = I
-  { cMean :: a,
-    cStdDev :: a,
-    pJumpProb :: a,
-    pMean :: a,
-    pStdDev :: a,
-    tMean :: a,
-    tStdDev :: a
+data IG a = IG
+  { _cMean :: a,
+    _cStdDev :: a,
+    _pJumpProb :: a,
+    _pMean :: a,
+    _pStdDev :: a,
+    _tMean :: a,
+    _tStdDev :: a
   }
+  deriving (Show)
 
-pr :: RealFloat a => PriorFunctionG (I a) a
-pr (I cm cs pj pm ps tm ts) =
+$(deriveJSON defaultOptions ''IG)
+
+makeLenses ''IG
+
+type I = IG Double
+
+i0 :: I
+i0 = IG 0 1.0 0.5 0 1.0 0 1.0
+
+pr :: RealFloat a => PriorFunctionG (IG a) a
+pr (IG cm cs pj pm ps tm ts) =
   product'
-    [ exponential 1.0 (abs cm),
-      exponential 1.0 cs,
+    [ normal 0.0 10.0 cm,
+      exponential 10.0 cs,
       uniform 0 1 pj,
-      exponential 1.0 (abs pm),
-      exponential 1.0 ps,
-      exponential 1.0 (abs tm),
-      exponential 1.0 ts
+      normal 0.0 10.0 pm,
+      exponential 10.0 ps,
+      normal 0.0 10.0 tm,
+      exponential 10.0 ts
     ]
 
 lhPrec :: (Scalar a ~ Double, RealFloat a, Mode a) => a -> a -> a -> Precipitation -> Precipitation -> Log a
@@ -70,8 +114,8 @@ lhPrec pj pm ps NoPrecipitation (PrecipitationAmount x') = Exp pj * normal pm ps
 lhPrec pj pm ps (PrecipitationAmount x) (PrecipitationAmount x') = Exp (1.0 - pj) * normal pm ps (auto $ x' - x)
 lhPrec pj pm ps (PrecipitationAmount x) NoPrecipitation = Exp pj * normal pm ps (auto x)
 
-lhStep :: (Scalar a ~ Double, RealFloat a, Mode a) => I (Mean a) -> DataPoint -> DataPoint -> Log a
-lhStep (I cm cs pj pm ps tm ts) (DataPoint c p t) (DataPoint c' p' t') =
+lhStep :: (Scalar a ~ Double, RealFloat a, Mode a) => IG a -> DataPoint -> DataPoint -> Log a
+lhStep (IG cm cs pj pm ps tm ts) (DataPoint c p t) (DataPoint c' p' t') =
   product'
     [ normal cm cs (auto $ c' - c),
       lhPrec pj pm ps p p',
@@ -79,5 +123,113 @@ lhStep (I cm cs pj pm ps tm ts) (DataPoint c p t) (DataPoint c' p' t') =
     ]
 
 -- lh :: RealFloat a => WeatherData a -> LikelihoodFunctionG (I a) a
-lh :: (Scalar a ~ Double, RealFloat a, Mode a) => WeatherData -> I (Mean a) -> Log a
+lh :: (Scalar a ~ Double, RealFloat a, Mode a) => WeatherData -> IG a -> Log a
 lh (WeatherData xs) x = V.product $ V.zipWith (lhStep x) xs (V.tail xs)
+
+cc :: Cycle I
+cc =
+  cycleFromList
+    [ cMean @~ slideSymmetric 1.0 (PName "cm") (pWeight 1) Tune,
+      cStdDev @~ scaleUnbiased 1.0 (PName "cs") (pWeight 1) Tune,
+      pJumpProb @~ scaleUnbiased 1.0 (PName "pj") (pWeight 1) Tune,
+      pMean @~ slideSymmetric 1.0 (PName "pm") (pWeight 1) Tune,
+      pStdDev @~ scaleUnbiased 1.0 (PName "ps") (pWeight 1) Tune,
+      tMean @~ slideSymmetric 1.0 (PName "tm") (pWeight 1) Tune,
+      tStdDev @~ scaleUnbiased 1.0 (PName "ts") (pWeight 1) Tune
+    ]
+
+monStd :: MonitorStdOut I
+monStd = monitorStdOut [_cMean >$< monitorDouble "cm"] 2
+
+mon :: Monitor I
+mon = Monitor monStd [] []
+
+readSampleData :: IO (WeatherData, DataPoint)
+readSampleData = do
+  b <- Bl.readFile fn
+  let d = either error id $ decode HasHeader b
+      (xs, x) =
+        fromMaybe (error "readSampleData: empty vector") $
+          V.unsnoc $
+            V.map fromDataPointRaw d
+  pure (WeatherData xs, x)
+  where
+    fn = "data/sample.csv"
+
+nIterations :: Int
+nIterations = 2000
+
+getMean :: V.Vector I -> I
+getMean xs = normalizeI $ V.foldl1' addI xs
+  where
+    combine f (IG x0 x1 x2 x3 x4 x5 x6) (IG y0 y1 y2 y3 y4 y5 y6) =
+      IG
+        (f x0 y0)
+        (f x1 y1)
+        (f x2 y2)
+        (f x3 y3)
+        (f x4 y4)
+        (f x5 y5)
+        (f x6 y6)
+    addI = combine (+)
+    n1 = recip $ fromIntegral $ V.length xs
+    nI = IG n1 n1 n1 n1 n1 n1 n1
+    normalizeI = combine (*) nI
+
+predictPrecipitation :: Precipitation -> Double -> Double -> Double -> Precipitation
+predictPrecipitation NoPrecipitation pj pm ps
+  | Exp pj * normal pm ps pm > Exp (1 - pj) = PrecipitationAmount pm
+  | otherwise = NoPrecipitation
+predictPrecipitation (PrecipitationAmount x) pj pm ps
+  | Exp pj > normal pm ps x' * Exp (1 - pj) = NoPrecipitation
+  | otherwise = PrecipitationAmount x'
+  where
+    x' = x + pm
+
+predict :: DataPoint -> I -> DataPoint
+predict (DataPoint c p t) (IG cm _ pj pm ps tm _) = DataPoint c'' p' t'
+  where
+    c' = c + cm
+    c'' = if c' < 0 then 0 else c'
+    p' = predictPrecipitation p pj pm ps
+    t' = t + tm
+
+renderPoint :: DataPoint -> H.Html
+renderPoint (DataPoint c p t) = td c <> td (fromPrecipitation p) <> td t
+  where
+    r = H.toMarkup . toLazyText . formatRealFloat Fixed (Just 1)
+    td x = H.td (r x) H.! A.style "text-align: right;"
+
+renderForecast :: (DataPoint, DataPoint, WeatherData) -> H.Html
+renderForecast (p, t, xs) =
+  H.table $
+    H.tr (H.th mempty <> H.th "Cloudiness [%]" <> H.th "Precipitation [mm]" <> H.th "Temperature [°C]")
+      <> H.tr (H.th "Predicted" <> renderPoint p)
+      <> H.tr (H.th "Actual" <> renderPoint t)
+
+predictWeather :: IO H.Html
+predictWeather = do
+  g <- getStdGen
+  (d, t) <- readSampleData
+  let s =
+        Settings
+          (AnalysisName "WeatherForecast")
+          (BurnInWithAutoTuning 1000 100)
+          (Iterations nIterations)
+          (TraceMinimum nIterations)
+          Overwrite
+          Sequential
+          NoSave
+          LogStdOutOnly
+          Quiet
+  -- Use the Metropolis-Hastings-Green (MHG) algorithm.
+  a <- mhg s pr (lh d) cc mon i0 g
+  -- Run the MCMC sampler.
+  c <- mcmc s a
+  tr <- takeT nIterations $ trace $ fromMHG c
+  let xs = V.map state tr
+      m = getMean xs
+      dl = V.last $ getWeatherData d
+  print m
+  let p = predict dl m
+  pure $ renderForecast (p, t, d)
