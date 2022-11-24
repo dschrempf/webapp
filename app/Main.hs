@@ -34,15 +34,26 @@ vegaSources =
   ]
 
 vegaHeader :: H.Html
-vegaHeader = H.head $ mconcat [H.script mempty H.! A.src s | s <- vegaSources]
+vegaHeader = mconcat [H.script mempty H.! A.src s | s <- vegaSources]
+
+css :: H.Html
+css = H.link H.! A.rel "stylesheet" H.! A.href "static/css/style.css"
+
+header :: H.Html
+header = H.head $ vegaHeader <> css
 
 body :: H.Html -> H.Html
-body = H.body
+body x = H.div H.! A.class_ "content" $ H.body x
 
 webapp :: H.Html -> H.Html
-webapp x = H.docTypeHtml $ vegaHeader <> body x
+webapp x = H.docTypeHtml $ header <> body x
 
 main :: IO ()
-main = S.scotty 3000 $ S.get "/" $ do
-  x <- liftIO weatherApp
-  blaze $ webapp x
+main = S.scotty 3000 $ do
+  S.get "/" $ do
+    x <- liftIO weatherApp
+    blaze $ webapp x
+  S.get "/static/css/style.css" $ do
+    S.setHeader "Content-Type" "text/css"
+    S.file "static/css/style.css"
+  S.get "/favicon.ico" $ S.file "static/favicon.ico"

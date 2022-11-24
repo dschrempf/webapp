@@ -16,6 +16,7 @@ module Weather.App
   )
 where
 
+import qualified Data.Text as T
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Builder.RealFloat (FPFormat (..), formatRealFloat)
 import qualified Data.Vector as V
@@ -25,18 +26,19 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Vega
 import Weather.Forecast
 
-renderPoint :: DataPoint -> H.Html
-renderPoint (DataPoint _ c p t) = td c <> td (fromPrecipitation p) <> td t
+renderPointWith :: T.Text -> DataPoint -> H.Html
+renderPointWith rh (DataPoint _ c p t) = th <> td c <> td (fromPrecipitation p) <> td t
   where
     r = H.toMarkup . toLazyText . formatRealFloat Fixed (Just 1)
     td x = H.td (r x) H.! A.style "text-align: right;"
+    th = H.th (H.text rh) H.! A.style "text-align: left;"
 
 renderTable :: DataPoint -> DataPoint -> H.Html
 renderTable p t =
   H.table $
     H.tr (H.th mempty <> H.th "Cloudiness [%]" <> H.th "Precipitation [mm]" <> H.th "Temperature [°C]")
-      <> H.tr (H.th "Predicted" <> renderPoint p)
-      <> H.tr (H.th "Actual" <> renderPoint t)
+      <> H.tr (renderPointWith "Predicted" p)
+      <> H.tr (renderPointWith "Actual" t)
 
 plotWeatherData :: WeatherData -> VegaLite
 plotWeatherData (WeatherData xs) =
