@@ -28,6 +28,7 @@ import Data.Time.Format.ISO8601
 import qualified Data.Vector as V
 import Graphics.Vega.VegaLite hiding (toHtml)
 import Lucid
+import Paths_webapp
 import Vega
 import Weather.Data
 import Weather.Forecast
@@ -110,6 +111,7 @@ renderForecast today s p t x = do
   h2_ "Custom time period"
   p_ "The data (but not the prediction) of the default query is cached. Do you want to see a prediction for a different time period, or a different weather station?"
   form today
+  p_ "The ZAMG Data Hub is a bit slow to respond; so expect some delay."
 
 data WeatherApp
   = WAppDefault
@@ -118,7 +120,9 @@ data WeatherApp
 weatherApp :: WeatherApp -> ActionM (Html ())
 weatherApp s = do
   d <- case s of
-    WAppDefault -> liftIO $ BL.readFile "data/default-october2022-hohewarte.csv"
+    WAppDefault -> do
+      fn <- liftIO $ getDataFileName "data/default-october2022-hohewarte.csv"
+      liftIO $ BL.readFile fn
     (WAppCustom start end station)
       | end < start -> fail "End date is before start date."
       | end == start -> fail "Start date is end date."

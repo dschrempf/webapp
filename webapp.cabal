@@ -1,4 +1,4 @@
-cabal-version:      3.0
+cabal-version:      3.6
 name:               webapp
 version:            0.1.0.0
 synopsis:           Plot something
@@ -20,6 +20,9 @@ extra-doc-files:
 
 extra-source-files:
 data-files:
+  data/default-october2022-hohewarte.csv
+  static/css/style.css
+  static/favicon.ico
 
 source-repository head
   location: https://github.com/dschrempf/webapp
@@ -57,8 +60,8 @@ library
     Weather.Zamg
 
   hs-source-dirs:  src
-  other-modules:
-  autogen-modules:
+  other-modules:   Paths_webapp
+  autogen-modules: Paths_webapp
   ghc-options:
   build-depends:
     , ad
@@ -81,8 +84,8 @@ executable webapp
   import:          common, exec
   main-is:         Main.hs
   hs-source-dirs:  app
-  other-modules:
-  autogen-modules:
+  other-modules:   Paths_webapp
+  autogen-modules: Paths_webapp
   ghc-options:
   build-depends:
     , base    >=4.7 && <5

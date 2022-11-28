@@ -16,10 +16,12 @@ module Main
   )
 where
 
+import Control.Monad.IO.Class
 import qualified Data.Text as T
 import Data.Time
 import Data.Time.Format.ISO8601
 import Lucid
+import Paths_webapp
 import Weather.App
 import Weather.Zamg
 import Web.Scotty hiding (body, header)
@@ -54,17 +56,19 @@ parseDay :: MonadFail m => String -> m Day
 parseDay = iso8601ParseM
 
 main :: IO ()
-main = S.scotty 3000 $ do
-  S.get "/" $ do
-    x <- weatherApp WAppDefault
-    blaze $ webapp x
-  S.get "/custom" $ do
-    start <- param "start" >>= parseDay
-    end <- param "end" >>= parseDay
-    station <- param "station" >>= parseStation
-    x <- weatherApp (WAppCustom start end station)
-    blaze $ webapp x
-  S.get "/static/css/style.css" $ do
-    S.setHeader "Content-Type" "text/css; charset=utf-8"
-    S.file "static/css/style.css"
-  S.get "/favicon.ico" $ S.file "static/favicon.ico"
+main =
+  S.scotty 3000 $ do
+    S.get "/" $ do
+      x <- weatherApp WAppDefault
+      blaze $ webapp x
+    S.get "/custom" $ do
+      start <- param "start" >>= parseDay
+      end <- param "end" >>= parseDay
+      station <- param "station" >>= parseStation
+      x <- weatherApp (WAppCustom start end station)
+      blaze $ webapp x
+    S.get "/static/css/style.css" $ do
+      S.setHeader "Content-Type" "text/css; charset=utf-8"
+      liftIO (getDataFileName "static/css/style.css") >>= S.file
+    S.get "/favicon.ico" $
+      liftIO (getDataFileName "static/favicon.ico") >>= S.file
