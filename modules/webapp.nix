@@ -6,7 +6,7 @@ let cfg = config.services.webapp;
 in
 {
   config = {
-    systemd.services."webapp" = {
+    systemd.services.webapp = {
       wantedBy = [ "multi-user.target" ];
       serviceConfig = let webapp = self.packages.${pkgs.system}.webapp; in
         {
@@ -14,6 +14,15 @@ in
           ExecStart = "${webapp}/bin/webapp";
         };
     };
+    # Requires separate Nginx and Acme configuration.
+    services.nginx.virtualHosts."dschrempf.duckdns.org" = {
+      forceSSL = true;
+      enableACME = true;
+      locations."/" = {
+        proxyPass = "http://localhost:3000";
+      };
+    };
+    # TODO: Remove this if Ok.
     networking.firewall.enable = true;
     networking.firewall.allowedTCPPorts = [ 3000 ];
   };
