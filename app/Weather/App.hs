@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -20,25 +21,24 @@ import qualified Data.Text as T
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Builder.RealFloat (FPFormat (..), formatRealFloat)
 import qualified Data.Vector as V
-import Graphics.Vega.VegaLite
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
+import Graphics.Vega.VegaLite hiding (toHtml)
+import Lucid
 import Vega
 import Weather.Forecast
 
-renderPointWith :: T.Text -> DataPoint -> H.Html
+renderPointWith :: T.Text -> DataPoint -> Html ()
 renderPointWith rh (DataPoint _ c p t) = th <> td c <> td (fromPrecipitation p) <> td t
   where
-    r = H.toMarkup . toLazyText . formatRealFloat Fixed (Just 1)
-    td x = H.td (r x) H.! A.style "text-align: right;"
-    th = H.th (H.text rh) H.! A.style "text-align: left;"
+    r = toHtml . toLazyText . formatRealFloat Fixed (Just 1)
+    td x = td_ [style_ "text-align: right;"] (r x)
+    th = th_ [style_ "text-align: left;"] (toHtml rh)
 
-renderTable :: DataPoint -> DataPoint -> H.Html
+renderTable :: DataPoint -> DataPoint -> Html ()
 renderTable p t =
-  H.table $
-    H.tr (H.th mempty <> H.th "Cloudiness [%]" <> H.th "Precipitation [mm]" <> H.th "Temperature [°C]")
-      <> H.tr (renderPointWith "Predicted" p)
-      <> H.tr (renderPointWith "Actual" t)
+  table_ $
+    tr_ (th_ mempty <> th_ "Cloudiness [%]" <> th_ "Precipitation [mm]" <> th_ "Temperature [°C]")
+      <> tr_ (renderPointWith "Predicted" p)
+      <> tr_ (renderPointWith "Actual" t)
 
 plotWeatherData :: WeatherData -> VegaLite
 plotWeatherData (WeatherData xs) =
@@ -62,10 +62,10 @@ plotWeatherData (WeatherData xs) =
     temp = [mark Point [], enc "Temperature" "Temperature [°C]" []]
     specs = [clouds, prec, temp]
 
-renderForecast :: DataPoint -> DataPoint -> WeatherData -> H.Html
-renderForecast p t x = embed "weather" (plotWeatherData x) <> H.p mempty <> renderTable p t
+renderForecast :: DataPoint -> DataPoint -> WeatherData -> Html ()
+renderForecast p t x = embed "weather" (plotWeatherData x) <> p_ mempty <> renderTable p t
 
-weatherApp :: IO H.Html
+weatherApp :: IO (Html ())
 weatherApp = do
   (p, t, xs) <- predictWeather
   pure $ renderForecast p t xs

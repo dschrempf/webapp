@@ -153,7 +153,7 @@ readSampleData = do
             V.map fromDataPointRaw d
   pure (WeatherData xs, x)
   where
-    fn = "static/data/sample.csv"
+    fn = "data/TAG Datensatz_20221001_20221014.csv"
 
 nIterations :: Int
 nIterations = 2000

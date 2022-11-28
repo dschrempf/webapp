@@ -17,22 +17,22 @@ module Vega
 where
 
 import qualified Data.Aeson.Text as A
-import qualified Data.Text.Lazy as T
-import Graphics.Vega.VegaLite
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
+import qualified Data.Text as TS
+import qualified Data.Text.Lazy as TL
+import Graphics.Vega.VegaLite hiding (toHtml)
+import Lucid
 
-embed :: T.Text -> VegaLite -> H.Html
+embed :: TS.Text -> VegaLite -> Html ()
 embed nm x =
   mconcat
-    [ H.div mempty H.! A.id (H.lazyTextValue nm),
-      H.script script H.! A.type_ "text/javascript"
+    [ div_ [id_ nm] mempty,
+      script_ [type_ "text/javascript"] script
     ]
   where
     script =
-      H.toHtml $
-        T.unlines
+      toHtmlRaw $
+        TS.unlines
           [ "var spec = " <> spec <> ";",
             "vegaEmbed('#" <> nm <> "', spec);"
           ]
-    spec = A.encodeToLazyText $ fromVL x
+    spec = TL.toStrict $ A.encodeToLazyText $ fromVL x

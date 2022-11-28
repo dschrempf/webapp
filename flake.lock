@@ -2,7 +2,7 @@
   "nodes": {
     "circular": {
       "inputs": {
-        "flake-utils": "flake-utils_2",
+        "flake-utils": "flake-utils_3",
         "nixpkgs": [
           "mcmc",
           "nixpkgs"
@@ -24,7 +24,7 @@
     },
     "covariance": {
       "inputs": {
-        "flake-utils": "flake-utils_3",
+        "flake-utils": "flake-utils_4",
         "nixpkgs": [
           "mcmc",
           "nixpkgs"
@@ -46,7 +46,7 @@
     },
     "dirichlet": {
       "inputs": {
-        "flake-utils": "flake-utils_4",
+        "flake-utils": "flake-utils_5",
         "nixpkgs": [
           "mcmc",
           "nixpkgs"
@@ -83,11 +83,11 @@
     },
     "flake-utils_2": {
       "locked": {
-        "lastModified": 1659877975,
-        "narHash": "sha256-zllb8aq3YO3h8B/U0/J1WBgAL8EX5yWf5pMj3G0NAmc=",
+        "lastModified": 1667395993,
+        "narHash": "sha256-nuEHfE/LcWyuSWnS8t12N1wc105Qtau+/OdUAjtQ0rA=",
         "owner": "numtide",
         "repo": "flake-utils",
-        "rev": "c0e246b9b83f637f4681389ecabcb2681b4f3af0",
+        "rev": "5aed5285a952e0b949eb3ba02c12fa4fcfef535f",
         "type": "github"
       },
       "original": {
@@ -156,12 +156,49 @@
         "type": "github"
       }
     },
+    "flake-utils_7": {
+      "locked": {
+        "lastModified": 1659877975,
+        "narHash": "sha256-zllb8aq3YO3h8B/U0/J1WBgAL8EX5yWf5pMj3G0NAmc=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "c0e246b9b83f637f4681389ecabcb2681b4f3af0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "hvega": {
+      "inputs": {
+        "flake-utils": "flake-utils_2",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1669330553,
+        "narHash": "sha256-PZBLCC5I2IN4eFvS+6PEpEWS7epLICPvsQFViJ8GGG4=",
+        "owner": "dschrempf",
+        "repo": "hvega",
+        "rev": "673d5c4a1e59d6c018136dc2ba1d35ec7d3165d5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dschrempf",
+        "ref": "dom",
+        "repo": "hvega",
+        "type": "github"
+      }
+    },
     "mcmc": {
       "inputs": {
         "circular": "circular",
         "covariance": "covariance",
         "dirichlet": "dirichlet",
-        "flake-utils": "flake-utils_5",
+        "flake-utils": "flake-utils_6",
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -199,7 +236,7 @@
     },
     "pava": {
       "inputs": {
-        "flake-utils": "flake-utils_6",
+        "flake-utils": "flake-utils_7",
         "nixpkgs": [
           "mcmc",
           "nixpkgs"
@@ -222,6 +259,7 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
+        "hvega": "hvega",
         "mcmc": "mcmc",
         "nixpkgs": "nixpkgs"
       }

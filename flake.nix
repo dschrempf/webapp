@@ -3,6 +3,9 @@
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
+  inputs.hvega.url = "github:dschrempf/hvega/dom";
+  inputs.hvega.inputs.nixpkgs.follows = "nixpkgs";
+
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   inputs.mcmc.url = "github:dschrempf/mcmc";
@@ -11,6 +14,7 @@
   outputs =
     { self
     , flake-utils
+    , hvega
     , mcmc
     , nixpkgs
     }:
@@ -27,7 +31,7 @@
             haskellPackages = supern.haskell.packages.${ghcVersion}.override {
               overrides = selfh: superh:
                 {
-                  hvega = selfh.callCabal2nix "hvega" ./modules/hvega rec { };
+                  hvega = hvega.packages.${system}.default;
                   mcmc = mcmc.packages.${system}.default;
                   webapp = selfh.callCabal2nix "webapp" ./. rec { };
                 };

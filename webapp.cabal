@@ -62,12 +62,12 @@ executable webapp
   build-depends:
     , ad
     , aeson
-    , base        >=4.7 && <5
-    , blaze-html
+    , base          >=4.7 && <5
     , bytestring
     , cassava
     , hvega
     , lens
+    , lucid
     , mcmc
     , random
     , scotty
