@@ -108,7 +108,7 @@ renderForecast today s p t x = do
   p_ ("The predicted and actual weather on the next day (" <> toHtml (_date t) <> "):")
   renderTable p t
   h2_ "Custom time period"
-  p_ "The data (but not the prediction) of the default query is cached. Do you want to see a prediction for a different time period?"
+  p_ "The data (but not the prediction) of the default query is cached. Do you want to see a prediction for a different time period, or a different weather station?"
   form today
 
 data WeatherApp

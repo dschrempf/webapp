@@ -44,11 +44,13 @@
           inherit overlays;
         };
         hpkgs = pkgs.haskellPackages;
-        webappPkgs = nixpkgs.lib.genAttrs haskellPackageNames (n: hpkgs.${n});
-        webappPkgsDev = builtins.mapAttrs (_: x: pkgs.haskell.lib.doBenchmark x) webappPkgs;
+        hlib = pkgs.haskell.lib;
+        # Tests involve non-reproducible REST calls.
+        webappPkgs = nixpkgs.lib.genAttrs haskellPackageNames (n: hlib.dontCheck hpkgs.${n});
+        webappPkgsDev = builtins.mapAttrs (_: x: hlib.doBenchmark x) webappPkgs;
       in
       {
-        packages = webappPkgs // { webappPkgs.default = webappPkgs.webapp; };
+        packages = webappPkgs // { default = webappPkgs.webapp; };
 
         devShells.default = hpkgs.shellFor {
           # shellHook =
@@ -73,6 +75,8 @@
           doBenchmark = true;
           # withHoogle = true;
         };
+
+        nixosModules.webapp = import ./modules/webapp.nix;
       }
     );
 }
