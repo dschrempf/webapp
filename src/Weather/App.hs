@@ -111,7 +111,7 @@ renderForecast today s p t x = do
   h2_ "Custom time period"
   p_ "The data (but not the prediction) of the default query is cached. Do you want to see a prediction for a different time period, or a different weather station?"
   form today
-  p_ "The ZAMG Data Hub is a bit slow to respond; so expect some delay."
+  p_ "The ZAMG Data Hub is a bit slow to respond; expect a delay."
 
 data WeatherApp
   = WAppDefault
