@@ -13,17 +13,21 @@
 --
 -- Creation date: Thu Nov 24 17:37:22 2022.
 module Weather.App
-  ( weatherApp,
+  ( WeatherApp (..),
+    weatherApp,
   )
 where
 
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Builder.RealFloat (FPFormat (..), formatRealFloat)
+import Data.Time
 import qualified Data.Vector as V
 import Graphics.Vega.VegaLite hiding (toHtml)
 import Lucid
 import Vega
+import Weather.Data
 import Weather.Forecast
 
 renderPointWith :: T.Text -> DataPoint -> Html ()
@@ -65,7 +69,14 @@ plotWeatherData (WeatherData xs) =
 renderForecast :: DataPoint -> DataPoint -> WeatherData -> Html ()
 renderForecast p t x = embed "weather" (plotWeatherData x) <> p_ mempty <> renderTable p t
 
-weatherApp :: IO (Html ())
-weatherApp = do
-  (p, t, xs) <- predictWeather
+data WeatherApp
+  = WAppDefault
+  | WAppCustom {_fromDate :: LocalTime, _toDate :: LocalTime}
+
+weatherApp :: WeatherApp -> IO (Html ())
+weatherApp s = do
+  d <- case s of
+    WAppDefault -> BL.readFile "data/default-october2022-hohewarte.csv"
+    (WAppCustom _ _) -> undefined
+  (p, t, xs) <- predictWeather d
   pure $ renderForecast p t xs

@@ -14,66 +14,22 @@
 --
 -- Creation date: Thu Nov 24 11:53:58 2022.
 module Weather.Forecast
-  ( Precipitation,
-    fromPrecipitation,
-    DataPoint (..),
-    WeatherData (..),
-    predictWeather,
+  ( predictWeather,
   )
 where
 
 import Control.Lens
 import Data.Aeson.TH
-import qualified Data.ByteString.Lazy as Bl
-import Data.Csv hiding (defaultOptions)
-import Data.Maybe
+import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import GHC.Generics
 import Mcmc
-import Mcmc.Chain.Chain
+import Mcmc.Chain.Chain hiding (start)
 import Mcmc.Chain.Link
 import Mcmc.Chain.Trace
 import Numeric.AD.Double
-import Numeric.Natural
 import System.Random (newStdGen)
-
-data Precipitation = NoPrecipitation | PrecipitationAmount Double
-  deriving (Show)
-
-fromPrecipitationRaw :: Maybe Double -> Precipitation
-fromPrecipitationRaw Nothing = NoPrecipitation
-fromPrecipitationRaw (Just x)
-  | x <= 0 = NoPrecipitation
-  | otherwise = PrecipitationAmount x
-
-fromPrecipitation :: Precipitation -> Double
-fromPrecipitation NoPrecipitation = 0
-fromPrecipitation (PrecipitationAmount x) = x
-
-data DataPointRaw = DataPointRaw
-  { station :: Natural,
-    date :: T.Text,
-    cloudinessRaw :: Maybe Double,
-    preicpitationRaw :: Maybe Double,
-    temperatureRaw :: Double
-  }
-  deriving (Generic)
-
-instance FromRecord DataPointRaw
-
-data DataPoint = DataPoint
-  { _date :: T.Text,
-    _cloudiness :: Double,
-    _precipitation :: Precipitation,
-    _temperature :: Double
-  }
-  deriving (Show)
-
-fromDataPointRaw :: DataPointRaw -> DataPoint
-fromDataPointRaw (DataPointRaw _ d cr pr tr) = DataPoint d (fromMaybe 0 cr) (fromPrecipitationRaw pr) tr
-
-newtype WeatherData = WeatherData {getWeatherData :: V.Vector DataPoint}
+import Weather.Data
 
 data IG a = IG
   { _cMean :: a,
@@ -143,18 +99,6 @@ monStd = monitorStdOut [_cMean >$< monitorDouble "cm"] 2
 mon :: Monitor I
 mon = Monitor monStd [] []
 
-readSampleData :: IO (WeatherData, DataPoint)
-readSampleData = do
-  b <- Bl.readFile fn
-  let d = either error id $ decode HasHeader b
-      (xs, x) =
-        fromMaybe (error "readSampleData: empty vector") $
-          V.unsnoc $
-            V.map fromDataPointRaw d
-  pure (WeatherData xs, x)
-  where
-    fn = "data/TAG Datensatz_20221001_20221014.csv"
-
 nIterations :: Int
 nIterations = 2000
 
@@ -193,10 +137,10 @@ predictWithDate dt (DataPoint _ c p t) (IG cm _ pj pm ps tm _) = DataPoint dt c'
     p' = predictPrecipitation p pj pm ps
     t' = t + tm
 
-predictWeather :: IO (DataPoint, DataPoint, WeatherData)
-predictWeather = do
+predictWeather :: BL.ByteString -> IO (DataPoint, DataPoint, WeatherData)
+predictWeather b = do
+  let (d, t) = parseData b
   g <- newStdGen
-  (d, t) <- readSampleData
   let s =
         Settings
           (AnalysisName "WeatherForecast")

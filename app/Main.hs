@@ -47,10 +47,14 @@ body x = div_ [class_ "content"] $ body_ x
 webapp :: Html () -> Html ()
 webapp x = doctypehtml_ $ header <> body x
 
+-- start, end :: LocalTime
+-- start = read "2022-09-01 00:00:00"
+-- end = read "2022-11-14 00:00:00"
+
 main :: IO ()
 main = S.scotty 3000 $ do
   S.get "/" $ do
-    x <- liftIO weatherApp
+    x <- liftIO $ weatherApp WAppDefault
     blaze $ webapp x
   S.get "/static/css/style.css" $ do
     S.setHeader "Content-Type" "text/css; charset=utf-8"

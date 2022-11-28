@@ -47,17 +47,17 @@ common exec
     -with-rtsopts=-N
 
 ---Werror
-
-executable webapp
-  import:          common, exec
-  main-is:         Main.hs
-  hs-source-dirs:  app
-  other-modules:
+library
+  import:          common, lib
+  exposed-modules:
     Vega
     Weather.App
+    Weather.Data
     Weather.Forecast
     Weather.Zamg
 
+  hs-source-dirs:  src
+  other-modules:
   autogen-modules:
   ghc-options:
   build-depends:
@@ -72,7 +72,35 @@ executable webapp
     , lucid
     , mcmc
     , random
-    , scotty
     , text
     , time
     , vector
+
+executable webapp
+  import:          common, exec
+  main-is:         Main.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:
+    , base    >=4.7 && <5
+    , lucid
+    , scotty
+    , text
+    , webapp
+
+test-suite webapp-test
+  import:          common, test
+  main-is:         Spec.hs
+  hs-source-dirs:  test
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  type:            exitcode-stdio-1.0
+  build-depends:
+    , base        >=4.7 && <5
+    , bytestring
+    , hspec
+    , time
+    , webapp

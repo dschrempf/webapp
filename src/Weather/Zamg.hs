@@ -13,12 +13,15 @@
 -- Creation date: Mon Nov 28 09:14:33 2022.
 module Weather.Zamg
   ( Station (..),
+    zamgDownloadData,
   )
 where
 
-import qualified Data.ByteString.Builder as B
-import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Builder as BB
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Function
+import Data.Functor
 import Data.Time
 import Data.Time.Format.ISO8601
 import Network.HTTP.Simple
@@ -35,16 +38,12 @@ import Numeric.Natural
 -- Date: &start=2022-10-01T00%3A00%3A00&end=2022-10-14T23%3A59%3A59
 -- Station: &station_ids=5904
 -- Output: &output_format=csv
--- Filename &filename=TAG+Datensatz_20221001_20221014
-
+--
 data Station = HoheWarte | LinzStadt
 
 getId :: Station -> Natural
 getId HoheWarte = 5904
 getId LinzStadt = 3202
-
-formatLocalTime :: LocalTime -> String
-formatLocalTime = iso8601Show
 
 zamgDay :: LocalTime -> LocalTime -> Station -> Request
 zamgDay a b s =
@@ -57,7 +56,12 @@ zamgDay a b s =
     & setRequestQueryString q
   where
     ps = [("parameters", Just x) | x <- ["bewmit", "nied", "t"]]
-    st = ("station_ids", Just $ B.toStrict $ B.toLazyByteString $ B.intDec $ fromIntegral $ getId s)
-    dt = [("start", Just $ B.pack $ iso8601Show a), ("end", Just $ B.pack $ iso8601Show b)]
+    st = ("station_ids", Just $ BS.toStrict $ BB.toLazyByteString $ BB.intDec $ fromIntegral $ getId s)
+    dt = [("start", Just $ BS.pack $ iso8601Show a), ("end", Just $ BS.pack $ iso8601Show b)]
     op = ("output_format", Just "csv")
     q = ps ++ dt ++ [st, op]
+
+zamgDownloadData :: LocalTime -> LocalTime -> Station -> IO BL.ByteString
+zamgDownloadData a b s = httpLBS r <&> getResponseBody
+  where
+    r = zamgDay a b s
