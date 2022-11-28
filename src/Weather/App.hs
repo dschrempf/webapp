@@ -18,17 +18,21 @@ module Weather.App
   )
 where
 
+import Control.Monad.IO.Class
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import Data.Text.Lazy.Builder (toLazyText)
 import Data.Text.Lazy.Builder.RealFloat (FPFormat (..), formatRealFloat)
 import Data.Time
+import Data.Time.Format.ISO8601
 import qualified Data.Vector as V
 import Graphics.Vega.VegaLite hiding (toHtml)
 import Lucid
 import Vega
 import Weather.Data
 import Weather.Forecast
+import Weather.Zamg (Station (..), showStation, zamgDownloadData)
+import Web.Scotty
 
 renderPointWith :: T.Text -> DataPoint -> Html ()
 renderPointWith rh (DataPoint _ c p t) = th <> td c <> td (fromPrecipitation p) <> td t
@@ -66,17 +70,62 @@ plotWeatherData (WeatherData xs) =
     temp = [mark Point [], enc "Temperature" "Temperature [°C]" []]
     specs = [clouds, prec, temp]
 
-renderForecast :: DataPoint -> DataPoint -> WeatherData -> Html ()
-renderForecast p t x = embed "weather" (plotWeatherData x) <> p_ mempty <> renderTable p t
+form :: Day -> Html ()
+form today =
+  form_ [action_ "custom"] $ do
+    p_ $ do
+      label_ [for_ "start"] "Start date: "
+      input_ [type_ "date", name_ "start", value_ "2022-10-01", max_ (T.pack $ iso8601Show maxStart)]
+      br_ mempty
+      label_ [for_ "end"] "End date: "
+      input_ [type_ "date", name_ "end", value_ "2022-10-30", max_ (T.pack $ iso8601Show maxEnd)]
+    p_ $ do
+      "Weather station:"
+      br_ mempty
+      input_ [type_ "radio", id_ "hohe_warte", name_ "station", value_ "hohe_warte", checked_]
+      label_ [for_ "hohe_warte"] "Hohe Warte (Vienna, Austria)"
+      br_ mempty
+      input_ [type_ "radio", id_ "linz_stadt", name_ "station", value_ "linz_stadt"]
+      label_ [for_ "linz_stadt"] "Linz Stadt (Linz, Austria)"
+    p_ $ do
+      input_ [type_ "submit", name_ "submit"]
+  where
+    -- No Num instance, so we have to subtract days in a complicated way.
+    maxEnd = iterate pred today !! 14
+    maxStart = iterate pred maxEnd !! 7
+
+renderForecast :: Day -> Station -> DataPoint -> DataPoint -> WeatherData -> Html ()
+renderForecast today s p t x = do
+  h1_ ("Weather forecast, " <> toHtml (showStation s))
+  p_
+    ( "This application downloads Austrian weather data (Zentralanstalt für Meteorologie und Geodynamik, "
+        <> a_ [href_ "https://data.hub.zamg.ac.at/dataset/klima-v1-1d"] "ZAMG Data Hub"
+        <> "), estimates some parameters using a Markov chain Monte Carlo sampler, and predicts the weather of the next day."
+    )
+  h2_ "Cloudiness, precipitation and temperature data"
+  embed "weather" (plotWeatherData x)
+  h2_ "Prediction"
+  p_ ("The predicted and actual weather on the next day (" <> toHtml (_date t) <> "):")
+  renderTable p t
+  h2_ "Custom time period"
+  p_ "The data (but not the prediction) of the default query is cached. Do you want to see a prediction for a different time period?"
+  form today
 
 data WeatherApp
   = WAppDefault
-  | WAppCustom {_fromDate :: LocalTime, _toDate :: LocalTime}
+  | WAppCustom {_startDate :: Day, _endDate :: Day, _station :: Station}
 
-weatherApp :: WeatherApp -> IO (Html ())
+weatherApp :: WeatherApp -> ActionM (Html ())
 weatherApp s = do
   d <- case s of
-    WAppDefault -> BL.readFile "data/default-october2022-hohewarte.csv"
-    (WAppCustom _ _) -> undefined
-  (p, t, xs) <- predictWeather d
-  pure $ renderForecast p t xs
+    WAppDefault -> liftIO $ BL.readFile "data/default-october2022-hohewarte.csv"
+    (WAppCustom start end station)
+      | end < start -> fail "End date is before start date."
+      | end == start -> fail "Start date is end date."
+      | otherwise -> liftIO $ zamgDownloadData start end station
+  let st = case s of
+        WAppDefault -> HoheWarte
+        (WAppCustom _ _ station) -> station
+  (p, t, xs) <- liftIO $ predictWeather d
+  today <- utctDay <$> liftIO getCurrentTime
+  pure $ renderForecast today st p t xs

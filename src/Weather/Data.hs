@@ -71,7 +71,7 @@ parseData :: BL.ByteString -> (WeatherData, DataPoint)
 parseData b =
   let d = either error id $ decode HasHeader b
       (xs, x) =
-        fromMaybe (error "readSampleData: empty vector") $
+        fromMaybe (error "readData: empty vector") $
           VS.unsnoc $
             VS.map dataPoint d
    in (WeatherData xs, x)

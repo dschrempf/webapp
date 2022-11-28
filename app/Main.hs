@@ -16,10 +16,13 @@ module Main
   )
 where
 
-import Control.Monad.IO.Class
 import qualified Data.Text as T
+import Data.Time
+import Data.Time.Format.ISO8601
 import Lucid
 import Weather.App
+import Weather.Zamg
+import Web.Scotty hiding (body, header)
 import qualified Web.Scotty as S
 
 blaze :: Html () -> S.ActionM ()
@@ -36,7 +39,7 @@ vegaHeader :: Html ()
 vegaHeader = mconcat [script_ [src_ s] (mempty :: T.Text) | s <- vegaSources]
 
 css :: Html ()
-css = link_ [rel_ "stylesheet", href_ "static/css/style.css"]
+css = link_ [rel_ "stylesheet", href_ "/static/css/style.css"]
 
 header :: Html ()
 header = head_ $ vegaHeader <> css
@@ -47,14 +50,19 @@ body x = div_ [class_ "content"] $ body_ x
 webapp :: Html () -> Html ()
 webapp x = doctypehtml_ $ header <> body x
 
--- start, end :: LocalTime
--- start = read "2022-09-01 00:00:00"
--- end = read "2022-11-14 00:00:00"
+parseDay :: MonadFail m => String -> m Day
+parseDay = iso8601ParseM
 
 main :: IO ()
 main = S.scotty 3000 $ do
   S.get "/" $ do
-    x <- liftIO $ weatherApp WAppDefault
+    x <- weatherApp WAppDefault
+    blaze $ webapp x
+  S.get "/custom" $ do
+    start <- param "start" >>= parseDay
+    end <- param "end" >>= parseDay
+    station <- param "station" >>= parseStation
+    x <- weatherApp (WAppCustom start end station)
     blaze $ webapp x
   S.get "/static/css/style.css" $ do
     S.setHeader "Content-Type" "text/css; charset=utf-8"

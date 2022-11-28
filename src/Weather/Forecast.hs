@@ -133,7 +133,10 @@ predictWithDate :: T.Text -> DataPoint -> I -> DataPoint
 predictWithDate dt (DataPoint _ c p t) (IG cm _ pj pm ps tm _) = DataPoint dt c'' p' t'
   where
     c' = c + cm
-    c'' = if c' < 0 then 0 else c'
+    c''
+      | c' < 0 = 0
+      | c' > 100 = 100
+      | otherwise = c'
     p' = predictPrecipitation p pj pm ps
     t' = t + tm
 
