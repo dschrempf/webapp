@@ -125,7 +125,7 @@ sForecast :: Day -> DataPoint -> DataPoint -> Html ()
 sForecast d p a = do
   h2_ "Forecast"
   p_ $ do
-    "The data is used to estimate (or \"train\" as machine learning advocates would say) some parameters of a minimalistic weather prediction model. A "
+    "The data is used to estimate (or \"train\" as machine learning advocates would say) some parameters of a minimalist weather prediction model. A "
     a_ [href_ "https://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo"] "Markov chain Monte Carlo"
     " sampler is used for this purpose. The estimation is fast and live, and happens when the page is loaded."
     " The weather model works well when the data exhibit linear trends, but fails when the data is periodic."
