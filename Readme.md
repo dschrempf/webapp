@@ -1,0 +1,2 @@
+A minimal weather forecast application developed in Haskell.
+
