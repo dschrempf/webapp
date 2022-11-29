@@ -125,6 +125,12 @@ sForecast :: Day -> DataPoint -> DataPoint -> Html ()
 sForecast d p a = do
   h2_ "Forecast"
   p_ $ do
+    "The data is used to estimate (or \"train\" as machine learning advocates would say) some parameters of a minimalistic weather prediction model. A "
+    a_ [href_ "https://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo"] "Markov chain Monte Carlo"
+    " sampler is used for this purpose. The estimation is fast and live, and happens when the page is loaded."
+    " The weather model works well when the data exhibit linear trends, but fails when the data is periodic."
+    " That is, I expect the prediction to be reasonably good when the time range is short (e.g., weeks or a few months), but I expect the prediction to fail when the time period spans a year or more."
+  p_ $ do
     "The predicted and the actual weather on "
     ppDate d
     ", are:"
@@ -149,7 +155,7 @@ sAbout = do
     a_ [href_ "https://dschrempf.github.io/about/"] "Dominik Schrempf"
     ", and is a short proof of concept and stake."
   p_ $ do
-    "The main components of the Haskell tech stack are:"
+    "The main elements of the Haskell tech stack are:"
     ul_ $ do
       li_ $ do
         a_ [href_ "https://hackage.haskell.org/package/scotty"] "Scotty"
@@ -163,11 +169,17 @@ sAbout = do
   p_ $ do
     "Other noteworthy components of this project:"
     ul_ $ do
-      li_ "The development environment is managed by the Nix package manager."
-      li_ "The application is deployed using a Nix Flake."
+      li_ $ do
+        "The development environment is managed by the "
+        a_ [href_ "https://github.com/NixOS/nix"] "Nix package manager"
+        ";"
+      li_ $ do
+        "The application is deployed using a "
+        a_ [href_ "https://nixos.org/manual/nix/unstable/command-ref/new-cli/nix3-flake.html"] "Nix Flake"
+        "."
   p_ $ do
     "For details, have a look at the "
-    a_ [href_ ""] "source code"
+    a_ [href_ "https://github.com/dschrempf/webapp"] "project source code"
     "."
 
 weatherApp :: WeatherApp -> ActionM (Html ())
