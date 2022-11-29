@@ -20,7 +20,6 @@ where
 
 import Control.Lens
 import Data.Aeson.TH
-import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Mcmc
@@ -140,9 +139,8 @@ predictWithDate dt (DataPoint _ c p t) (IG cm _ pj pm ps tm _) = DataPoint dt c'
     p' = predictPrecipitation p pj pm ps
     t' = t + tm
 
-predictWeather :: BL.ByteString -> IO (DataPoint, DataPoint, WeatherData)
-predictWeather b = do
-  let (d, t) = parseData b
+predictWeather :: WeatherData -> IO DataPoint
+predictWeather d = do
   g <- newStdGen
   let s =
         Settings
@@ -164,5 +162,5 @@ predictWeather b = do
       m = getMean xs
       dl = V.last $ getWeatherData d
   print m
-  let p = predictWithDate (_date dl) dl m
-  pure (p, t, d)
+  let p = predictWithDate (date dl) dl m
+  pure p

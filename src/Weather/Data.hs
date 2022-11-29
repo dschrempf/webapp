@@ -13,10 +13,10 @@
 -- Creation date: Mon Nov 28 11:59:08 2022.
 module Weather.Data
   ( Precipitation (..),
-    precipitation,
+    toPrecipitation,
     fromPrecipitation,
     DataPoint (..),
-    dataPoint,
+    toDataPoint,
     WeatherData (..),
     parseData,
   )
@@ -33,9 +33,9 @@ import Numeric.Natural
 data Precipitation = NoPrecipitation | PrecipitationAmount Double
   deriving (Show)
 
-precipitation :: Maybe Double -> Precipitation
-precipitation Nothing = NoPrecipitation
-precipitation (Just x)
+toPrecipitation :: Maybe Double -> Precipitation
+toPrecipitation Nothing = NoPrecipitation
+toPrecipitation (Just x)
   | x <= 0 = NoPrecipitation
   | otherwise = PrecipitationAmount x
 
@@ -44,26 +44,26 @@ fromPrecipitation NoPrecipitation = 0
 fromPrecipitation (PrecipitationAmount x) = x
 
 data DataPointRaw = DataPointRaw
-  { station :: Natural,
-    date :: TS.Text,
-    cloudinessRaw :: Maybe Double,
-    preicpitationRaw :: Maybe Double,
-    temperatureRaw :: Double
+  { stationR :: Natural,
+    dateR :: TS.Text,
+    cloudinessR :: Maybe Double,
+    prexipitationR :: Maybe Double,
+    temperatureR :: Double
   }
   deriving (Generic)
 
 instance FromRecord DataPointRaw
 
 data DataPoint = DataPoint
-  { _date :: TS.Text,
-    _cloudiness :: Double,
-    _precipitation :: Precipitation,
-    _temperature :: Double
+  { date :: TS.Text,
+    cloudiness :: Double,
+    precipitation :: Precipitation,
+    temperature :: Double
   }
   deriving (Show)
 
-dataPoint :: DataPointRaw -> DataPoint
-dataPoint (DataPointRaw _ d cr pr tr) = DataPoint d (fromMaybe 0 cr) (precipitation pr) tr
+toDataPoint :: DataPointRaw -> DataPoint
+toDataPoint (DataPointRaw _ d cr pr tr) = DataPoint d (fromMaybe 0 cr) (toPrecipitation pr) tr
 
 newtype WeatherData = WeatherData {getWeatherData :: VS.Vector DataPoint}
 
@@ -73,5 +73,5 @@ parseData b =
       (xs, x) =
         fromMaybe (error "readData: empty vector") $
           VS.unsnoc $
-            VS.map dataPoint d
+            VS.map toDataPoint d
    in (WeatherData xs, x)

@@ -26,13 +26,14 @@ import Data.Text.Lazy.Builder.RealFloat (FPFormat (..), formatRealFloat)
 import Data.Time
 import Data.Time.Format.ISO8601
 import qualified Data.Vector as V
+import qualified Data.Vector as VS
 import Graphics.Vega.VegaLite hiding (toHtml)
 import Lucid
 import Paths_webapp
 import Vega
 import Weather.Data
 import Weather.Forecast
-import Weather.Zamg (Station (..), showStation, zamgDownloadData)
+import Weather.Zamg (Station (..), showStation, showStationDetailed, zamgDownloadData)
 import Web.Scotty
 
 renderPointWith :: T.Text -> DataPoint -> Html ()
@@ -58,10 +59,10 @@ plotWeatherData (WeatherData xs) =
   where
     dat =
       dataFromColumns [Parse [("Date", FoDate "%Y-%m-%d")]]
-        . dataColumn "Date" (Strings $ V.toList $ V.map _date xs)
-        . dataColumn "Cloudiness" (Numbers $ V.toList $ V.map _cloudiness xs)
-        . dataColumn "Precipitation" (Numbers $ V.toList $ V.map (fromPrecipitation . _precipitation) xs)
-        . dataColumn "Temperature" (Numbers $ V.toList $ V.map _temperature xs)
+        . dataColumn "Date" (Strings $ V.toList $ V.map date xs)
+        . dataColumn "Cloudiness" (Numbers $ V.toList $ V.map cloudiness xs)
+        . dataColumn "Precipitation" (Numbers $ V.toList $ V.map (fromPrecipitation . precipitation) xs)
+        . dataColumn "Temperature" (Numbers $ V.toList $ V.map temperature xs)
     enc fld ttl =
       encoding
         . position X [PName "Date", PmType Temporal]
@@ -91,24 +92,47 @@ form today =
     p_ $ do
       input_ [type_ "submit", name_ "submit"]
   where
-    -- No Num instance, so we have to subtract days in a complicated way.
-    maxEnd = iterate pred today !! 14
-    maxStart = iterate pred maxEnd !! 7
+    maxEnd = addDays (-14) today
+    maxStart = addDays (-7) maxEnd
 
-renderForecast :: Day -> Station -> DataPoint -> DataPoint -> WeatherData -> Html ()
-renderForecast today s p t x = do
+sIntro :: Station -> Html ()
+sIntro s = do
   h1_ ("Weather forecast, " <> toHtml (showStation s))
   p_
     ( "This application downloads Austrian weather data (Zentralanstalt für Meteorologie und Geodynamik, "
         <> a_ [href_ "https://data.hub.zamg.ac.at/dataset/klima-v1-1d"] "ZAMG Data Hub"
         <> "), estimates some parameters using a Markov chain Monte Carlo sampler, and predicts the weather of the next day."
     )
-  h2_ "Cloudiness, precipitation and temperature data"
+
+ppDate :: FormatTime t => t -> Html ()
+ppDate = toHtml . formatTime defaultTimeLocale "%B %e, %Y"
+
+sData :: Day -> Day -> Station -> WeatherData -> Html ()
+sData a b s x = do
+  h2_ "Data"
+  p_ $ do
+    "We use cloudiness [%], precipitation [mm] and temperature [°C] data measured daily at the weather station "
+    toHtml (showStationDetailed s)
+    ". "
+    "The time period of the training data ranges from "
+    ppDate a
+    ", to "
+    ppDate b
+    "."
   embed "weather" (plotWeatherData x)
-  h2_ "Prediction"
-  p_ ("The predicted and actual weather on the next day (" <> toHtml (_date t) <> "):")
-  renderTable p t
-  h2_ "Custom time period"
+
+sForecast :: Day -> DataPoint -> DataPoint -> Html ()
+sForecast d p a = do
+  h2_ "Forecast"
+  p_ $ do
+    "The predicted and the actual weather on "
+    ppDate d
+    ", are:"
+  renderTable p a
+
+sCustom :: Day -> Html ()
+sCustom today = do
+  h2_ "Custom time period and weather station"
   p_ "The data (but not the prediction) of the default query is cached. Do you want to see a prediction for a different time period, or a different weather station?"
   form today
   p_ "The ZAMG Data Hub is a bit slow to respond; expect a delay."
@@ -117,19 +141,58 @@ data WeatherApp
   = WAppDefault
   | WAppCustom {_startDate :: Day, _endDate :: Day, _station :: Station}
 
+sAbout :: Html ()
+sAbout = do
+  h2_ "About"
+  p_ $ do
+    "This application was developed by "
+    a_ [href_ "https://dschrempf.github.io/about/"] "Dominik Schrempf"
+    ", and is a short proof of concept and stake."
+  p_ $ do
+    "The main components of the Haskell tech stack are:"
+    ul_ $ do
+      li_ $ do
+        a_ [href_ "https://hackage.haskell.org/package/scotty"] "Scotty"
+        ", a web framework;"
+      li_ $ do
+        a_ [href_ "https://hackage.haskell.org/package/lucid"] "Lucid"
+        ", a domain specific language for HTML;"
+      li_ $ do
+        a_ [href_ "https://hackage.haskell.org/package/mcmc"] "Mcmc"
+        ", a Markov chain Monte Carlo sampler."
+  p_ $ do
+    "Other noteworthy components of this project:"
+    ul_ $ do
+      li_ "The development environment is managed by the Nix package manager."
+      li_ "The application is deployed using a Nix Flake."
+  p_ $ do
+    "For details, have a look at the "
+    a_ [href_ ""] "source code"
+    "."
+
 weatherApp :: WeatherApp -> ActionM (Html ())
 weatherApp s = do
-  d <- case s of
+  bs <- case s of
     WAppDefault -> do
       fn <- liftIO $ getDataFileName "data/default-october2022-hohewarte.csv"
       liftIO $ BL.readFile fn
     (WAppCustom start end station)
       | end < start -> fail "End date is before start date."
       | end == start -> fail "Start date is end date."
+      | addDays 365 start < end -> fail "Please limit the time period to one year."
       | otherwise -> liftIO $ zamgDownloadData start end station
   let st = case s of
         WAppDefault -> HoheWarte
         (WAppCustom _ _ station) -> station
-  (p, t, xs) <- liftIO $ predictWeather d
+      (xs, x) = parseData bs
+  a <- iso8601ParseM $ T.unpack $ date $ VS.head $ getWeatherData xs
+  b <- iso8601ParseM $ T.unpack $ date $ VS.last $ getWeatherData xs
+  d <- iso8601ParseM $ T.unpack $ date x
+  p <- liftIO $ predictWeather xs
   today <- utctDay <$> liftIO getCurrentTime
-  pure $ renderForecast today st p t xs
+  pure $ do
+    sIntro st
+    sData a b st xs
+    sForecast d p x
+    sCustom today
+    sAbout

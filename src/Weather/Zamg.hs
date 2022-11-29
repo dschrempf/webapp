@@ -14,6 +14,7 @@
 module Weather.Zamg
   ( Station (..),
     showStation,
+    showStationDetailed,
     parseStation,
     zamgDownloadData,
   )
@@ -47,6 +48,10 @@ data Station = HoheWarte | LinzStadt
 showStation :: Station -> TS.Text
 showStation HoheWarte = "Vienna, Austria"
 showStation LinzStadt = "Linz, Austria"
+
+showStationDetailed :: Station -> TS.Text
+showStationDetailed HoheWarte = "Hohe Warte (ID 5904), Vienna, Austria"
+showStationDetailed LinzStadt = "Linz Stadt (ID 3202), Linz, Austria"
 
 parseStation :: MonadFail m => String -> m Station
 parseStation "hohe_warte" = pure HoheWarte
