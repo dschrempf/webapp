@@ -170,11 +170,11 @@ sAbout = do
     "Other noteworthy components of this project:"
     ul_ $ do
       li_ $ do
-        "The development environment is managed by the "
+        "the development environment is managed by the "
         a_ [href_ "https://github.com/NixOS/nix"] "Nix package manager"
         ";"
       li_ $ do
-        "The application is deployed using a "
+        "the application is deployed using a "
         a_ [href_ "https://nixos.org/manual/nix/unstable/command-ref/new-cli/nix3-flake.html"] "Nix Flake"
         "."
   p_ $ do
