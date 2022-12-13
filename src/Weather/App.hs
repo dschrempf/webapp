@@ -90,7 +90,7 @@ form today =
       input_ [type_ "radio", id_ "linz_stadt", name_ "station", value_ "linz_stadt"]
       label_ [for_ "linz_stadt"] "Linz Stadt (Linz, Austria)"
     p_ $ do
-      input_ [type_ "submit", name_ "submit"]
+      input_ [type_ "submit", value_ "Predict weather"]
   where
     maxEnd = addDays (-14) today
     maxStart = addDays (-7) maxEnd
@@ -129,7 +129,7 @@ sForecast d p a = do
     a_ [href_ "https://en.wikipedia.org/wiki/Markov_chain_Monte_Carlo"] "Markov chain Monte Carlo"
     " sampler is used for this purpose. The estimation is fast and live, and happens when the page is loaded."
     " The weather model works well when the data exhibit linear trends, but fails when the data is periodic."
-    " That is, I expect the prediction to be reasonably good when the time range is short (e.g., weeks or a few months), but I expect the prediction to fail when the time period spans a year or more."
+    " That is, I expect the prediction to be reasonably good when the time range is short (e.g., weeks or a few months), but I expect erroneous prediction when the time period spans a year or more."
   p_ $ do
     "The predicted and the actual weather on "
     ppDate d
@@ -139,9 +139,9 @@ sForecast d p a = do
 sCustom :: Day -> Html ()
 sCustom today = do
   h2_ "Custom time period and weather station"
-  p_ "The data (but not the prediction) of the default query is cached. Do you want to see a prediction for a different time period, or a different weather station?"
+  p_ "The data of the default query is cached. The prediction is performed when the page is loaded. Do you want to see a prediction for a different time period, or a different weather station?"
   form today
-  p_ "The ZAMG Data Hub is a bit slow to respond; expect a delay."
+  p_ "The ZAMG Data Hub is a bit slow to respond — expect a delay."
 
 data WeatherApp
   = WAppDefault
