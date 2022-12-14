@@ -9,7 +9,7 @@
   inputs.mcmc.url = "github:dschrempf/mcmc";
   inputs.mcmc.inputs.nixpkgs.follows = "nixpkgs";
 
-  # TODO: Move back to nixos-unstable-small when scotty 12.1 is available.
+  # # TODO: Move back to nixos-unstable-small when breakage has reached acceptable levels.
   # inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable-small";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/haskell-updates";
 
@@ -24,7 +24,7 @@
       theseHpkgNames = [
         "webapp"
       ];
-      thisGhcVersion = "ghc943";
+      thisGhcVersion = "ghc92";
       hOverlay = selfn: supern: {
         haskell = supern.haskell // {
           packageOverrides = selfh: superh:
