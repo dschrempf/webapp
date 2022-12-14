@@ -22,8 +22,5 @@ in
         proxyPass = "http://localhost:3000";
       };
     };
-    # TODO: Remove this if Ok.
-    networking.firewall.enable = true;
-    networking.firewall.allowedTCPPorts = [ 3000 ];
   };
 }

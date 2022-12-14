@@ -6,10 +6,12 @@
   inputs.hvega.url = "github:dschrempf/hvega/dom";
   inputs.hvega.inputs.nixpkgs.follows = "nixpkgs";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
   inputs.mcmc.url = "github:dschrempf/mcmc";
   inputs.mcmc.inputs.nixpkgs.follows = "nixpkgs";
+
+  # TODO: Move back to nixos-unstable-small when scotty 12.1 is available.
+  # inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable-small";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/haskell-updates";
 
   outputs =
     { self
@@ -18,50 +20,41 @@
     , mcmc
     , nixpkgs
     }:
-    flake-utils.lib.eachDefaultSystem
-      (
-        system:
-        let
-          haskellPackageNames = [
-            "webapp"
-          ];
-          ghcVersion = "ghc924";
-          haskellMkPackage = hps: nm: hps.callCabal2nix nm (./. + "/${nm}") { };
-          haskellOverlay = (
-            selfn: supern: {
-              haskellPackages = supern.haskell.packages.${ghcVersion}.override {
-                overrides = selfh: superh:
-                  {
-                    hvega = hvega.packages.${system}.default;
-                    mcmc = mcmc.packages.${system}.default;
-                    webapp = selfh.callCabal2nix "webapp" ./. rec { };
-                  };
+    let
+      theseHpkgNames = [
+        "webapp"
+      ];
+      thisGhcVersion = "ghc943";
+      hOverlay = selfn: supern: {
+        haskell = supern.haskell // {
+          packageOverrides = selfh: superh:
+            supern.haskell.packageOverrides selfh superh //
+              {
+                webapp = selfh.callCabal2nix "webapp" ./. { };
               };
-            }
-          );
-          overlays = [ haskellOverlay ];
+        };
+      };
+      overlays = [
+        hOverlay
+        hvega.overlays.default
+        mcmc.overlays.default
+      ];
+      perSystem = system:
+        let
           pkgs = import nixpkgs {
             inherit system;
             inherit overlays;
           };
-          hpkgs = pkgs.haskellPackages;
+          hpkgs = pkgs.haskell.packages.${thisGhcVersion};
           hlib = pkgs.haskell.lib;
-          # Tests involve non-reproducible REST calls.
-          webappPkgs = nixpkgs.lib.genAttrs haskellPackageNames (n: hlib.dontCheck hpkgs.${n});
-          webappPkgsDev = builtins.mapAttrs (_: x: hlib.doBenchmark x) webappPkgs;
+          theseHpkgs = nixpkgs.lib.genAttrs theseHpkgNames (n: hpkgs.${n});
+          theseHpkgsDev = builtins.mapAttrs (_: x: hlib.doBenchmark x) theseHpkgs;
         in
         {
-          packages = webappPkgs // { default = webappPkgs.webapp; };
+          packages = theseHpkgs // { default = theseHpkgs.webapp; };
 
           devShells.default = hpkgs.shellFor {
-            # shellHook =
-            #   let
-            #     scripts = ./scripts;
-            #   in
-            #   ''
-            #     export PATH="${scripts}:$PATH"
-            #   '';
-            packages = _: (builtins.attrValues webappPkgsDev);
+            packages = _: (builtins.attrValues theseHpkgsDev);
             nativeBuildInputs = with pkgs; [
               # See https://github.com/NixOS/nixpkgs/issues/59209.
               bashInteractive
@@ -76,13 +69,15 @@
             doBenchmark = true;
             # withHoogle = true;
           };
-        }
-      )
-    // {
+        };
+    in
+    {
+      overlays.default = nixpkgs.lib.composeManyExtensions overlays;
       nixosModules = let m = import ./modules/webapp.nix self; in
         {
           webapp = m;
           default = m;
         };
-    };
+    }
+    // flake-utils.lib.eachDefaultSystem perSystem;
 }
