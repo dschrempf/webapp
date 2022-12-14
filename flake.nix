@@ -47,7 +47,7 @@
           };
           hpkgs = pkgs.haskell.packages.${thisGhcVersion};
           hlib = pkgs.haskell.lib;
-          theseHpkgs = nixpkgs.lib.genAttrs theseHpkgNames (n: hpkgs.${n});
+          theseHpkgs = nixpkgs.lib.genAttrs theseHpkgNames (n: hlib.dontCheck hpkgs.${n});
           theseHpkgsDev = builtins.mapAttrs (_: x: hlib.doBenchmark x) theseHpkgs;
         in
         {
