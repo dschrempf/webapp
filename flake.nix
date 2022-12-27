@@ -9,9 +9,7 @@
   inputs.mcmc.url = "github:dschrempf/mcmc";
   inputs.mcmc.inputs.nixpkgs.follows = "nixpkgs";
 
-  # # TODO: Move back to nixos-unstable-small when breakage has reached acceptable levels.
-  # inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable-small";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/haskell-updates";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable-small";
 
   outputs =
     { self
