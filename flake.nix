@@ -9,7 +9,7 @@
   inputs.mcmc.url = "github:dschrempf/mcmc";
   inputs.mcmc.inputs.nixpkgs.follows = "nixpkgs";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable-small";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   outputs =
     { self
@@ -22,7 +22,7 @@
       theseHpkgNames = [
         "webapp"
       ];
-      thisGhcVersion = "ghc92";
+      thisGhcVersion = "ghc96";
       hOverlay = selfn: supern: {
         haskell = supern.haskell // {
           packageOverrides = selfh: superh:
@@ -53,16 +53,13 @@
 
           devShells.default = hpkgs.shellFor {
             packages = _: (builtins.attrValues theseHpkgsDev);
-            nativeBuildInputs = with pkgs; [
-              # See https://github.com/NixOS/nixpkgs/issues/59209.
-              bashInteractive
-
+            nativeBuildInputs = [
               # Haskell toolchain.
               hpkgs.cabal-fmt
               hpkgs.cabal-install
               hpkgs.haskell-language-server
             ];
-            buildInputs = with pkgs; [
+            buildInputs = [
             ];
             doBenchmark = true;
             # withHoogle = true;
@@ -71,10 +68,10 @@
     in
     {
       overlays.default = nixpkgs.lib.composeManyExtensions overlays;
-      nixosModules = let m = import ./modules/webapp.nix self; in
+      nixosModules = let webapp = import ./modules/webapp.nix self; in
         {
-          webapp = m;
-          default = m;
+          inherit webapp;
+          default = webapp;
         };
     }
     // flake-utils.lib.eachDefaultSystem perSystem;
