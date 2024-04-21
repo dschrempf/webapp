@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- |
 -- Module      :  Weather.Forecast
@@ -50,7 +51,7 @@ type I = IG Double
 i0 :: I
 i0 = IG 0 1.0 0.5 0 1.0 0 1.0
 
-pr :: RealFloat a => PriorFunctionG (IG a) a
+pr :: (RealFloat a) => PriorFunctionG (IG a) a
 pr (IG cm cs pj pm ps tm ts) =
   product'
     [ normal 0.0 10.0 cm,

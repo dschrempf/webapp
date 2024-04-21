@@ -44,8 +44,8 @@ fromPrecipitation NoPrecipitation = 0
 fromPrecipitation (PrecipitationAmount x) = x
 
 data DataPointRaw = DataPointRaw
-  { stationR :: Natural,
-    dateR :: TS.Text,
+  { dateR :: TS.Text,
+    stationR :: Natural,
     cloudinessR :: Maybe Double,
     prexipitationR :: Maybe Double,
     temperatureR :: Double
@@ -63,7 +63,7 @@ data DataPoint = DataPoint
   deriving (Show)
 
 toDataPoint :: DataPointRaw -> DataPoint
-toDataPoint (DataPointRaw _ d cr pr tr) = DataPoint d (fromMaybe 0 cr) (toPrecipitation pr) tr
+toDataPoint (DataPointRaw d _ cr pr tr) = DataPoint d (fromMaybe 0 cr) (toPrecipitation pr) tr
 
 newtype WeatherData = WeatherData {getWeatherData :: VS.Vector DataPoint}
 

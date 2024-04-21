@@ -52,7 +52,7 @@ body x = div_ [class_ "content"] $ body_ x
 webapp :: Html () -> Html ()
 webapp x = doctypehtml_ $ header <> body x
 
-parseDay :: MonadFail m => String -> m Day
+parseDay :: (MonadFail m) => String -> m Day
 parseDay = iso8601ParseM
 
 main :: IO ()
@@ -62,9 +62,9 @@ main =
       x <- weatherApp WAppDefault
       blaze $ webapp x
     S.get "/custom" $ do
-      start <- param "start" >>= parseDay
-      end <- param "end" >>= parseDay
-      station <- param "station" >>= parseStation
+      start <- queryParam "start" >>= parseDay
+      end <- queryParam "end" >>= parseDay
+      station <- queryParam "station" >>= parseStation
       x <- weatherApp (WAppCustom start end station)
       blaze $ webapp x
     S.get "/static/css/style.css" $ do

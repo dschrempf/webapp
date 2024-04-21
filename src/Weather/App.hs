@@ -27,6 +27,7 @@ import Data.Time
 import Data.Time.Format.ISO8601
 import qualified Data.Vector as V
 import qualified Data.Vector as VS
+import Debug.Trace (traceShow)
 import Graphics.Vega.VegaLite hiding (toHtml)
 import Lucid
 import Paths_webapp
@@ -52,14 +53,15 @@ renderTable p t =
 
 plotWeatherData :: WeatherData -> VegaLite
 plotWeatherData (WeatherData xs) =
-  toVegaLite
-    [ dat [],
-      vlConcat $ map asSpec specs
-    ]
+  traceShow xs $
+    toVegaLite
+      [ dat [],
+        vlConcat $ map asSpec specs
+      ]
   where
     dat =
       dataFromColumns [Parse [("Date", FoDate "%Y-%m-%d")]]
-        . dataColumn "Date" (Strings $ V.toList $ V.map date xs)
+        . dataColumn "Date" (Strings $ V.toList $ V.map (T.take 10 . date) xs)
         . dataColumn "Cloudiness" (Numbers $ V.toList $ V.map cloudiness xs)
         . dataColumn "Precipitation" (Numbers $ V.toList $ V.map (fromPrecipitation . precipitation) xs)
         . dataColumn "Temperature" (Numbers $ V.toList $ V.map temperature xs)
@@ -104,7 +106,7 @@ sIntro s = do
         <> "), estimates some parameters using a Markov chain Monte Carlo sampler, and predicts the weather of the next day."
     )
 
-ppDate :: FormatTime t => t -> Html ()
+ppDate :: (FormatTime t) => t -> Html ()
 ppDate = toHtml . formatTime defaultTimeLocale "%B %e, %Y"
 
 sData :: Day -> Day -> Station -> WeatherData -> Html ()
@@ -182,6 +184,9 @@ sAbout = do
     a_ [href_ "https://github.com/dschrempf/webapp"] "project source code"
     "."
 
+parseZamgDate :: (MonadFail m) => String -> m Day
+parseZamgDate = parseTimeM True defaultTimeLocale "%Y-%m-%dT%R%Ez"
+
 weatherApp :: WeatherApp -> ActionM (Html ())
 weatherApp s = do
   bs <- case s of
@@ -193,13 +198,14 @@ weatherApp s = do
       | end == start -> fail "Start date is end date."
       | addDays 365 start < end -> fail "Please limit the time period to one year."
       | otherwise -> liftIO $ zamgDownloadData start end station
+  liftIO $ BL.putStr bs
   let st = case s of
         WAppDefault -> HoheWarte
         (WAppCustom _ _ station) -> station
       (xs, x) = parseData bs
-  a <- iso8601ParseM $ T.unpack $ date $ VS.head $ getWeatherData xs
-  b <- iso8601ParseM $ T.unpack $ date $ VS.last $ getWeatherData xs
-  d <- iso8601ParseM $ T.unpack $ date x
+  a <- parseZamgDate $ T.unpack $ date $ VS.head $ getWeatherData xs
+  b <- parseZamgDate $ T.unpack $ date $ VS.last $ getWeatherData xs
+  d <- parseZamgDate $ T.unpack $ date x
   p <- liftIO $ predictWeather xs
   today <- utctDay <$> liftIO getCurrentTime
   pure $ do
