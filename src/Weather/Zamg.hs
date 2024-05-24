@@ -53,7 +53,7 @@ showStationDetailed :: Station -> TS.Text
 showStationDetailed HoheWarte = "Hohe Warte (ID 5904), Vienna, Austria"
 showStationDetailed LinzStadt = "Linz Stadt (ID 3202), Linz, Austria"
 
-parseStation :: MonadFail m => String -> m Station
+parseStation :: (MonadFail m) => String -> m Station
 parseStation "hohe_warte" = pure HoheWarte
 parseStation "linz_stadt" = pure LinzStadt
 parseStation x = fail x
