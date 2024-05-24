@@ -46,7 +46,10 @@
           hpkgs = pkgs.haskell.packages.${thisGhcVersion};
           hlib = pkgs.haskell.lib;
           theseHpkgs = nixpkgs.lib.genAttrs theseHpkgNames (n: hlib.dontCheck hpkgs.${n});
-          theseHpkgsDev = builtins.mapAttrs (_: x: hlib.doBenchmark x) theseHpkgs;
+          theseHpkgsDev = builtins.mapAttrs
+            (_: x: hlib.doCheck
+              (hlib.doBenchmark x))
+            theseHpkgs;
         in
         {
           packages = theseHpkgs // { default = theseHpkgs.webapp; };
@@ -62,7 +65,7 @@
             buildInputs = [
             ];
             doBenchmark = true;
-            # withHoogle = true;
+            withHoogle = true;
           };
         };
     in
