@@ -31,26 +31,40 @@ import Numeric.AD.Double
 import System.Random (newStdGen)
 import Weather.Data
 
+-- | The state of the Markov chain is a set of parameters used to describe the
+-- weather.
+--
+-- The type parameter will be instantiated to 'Double', but 'mcmc' can also find
+-- proposals using automatic differentation which requires a more general type.
 data IG a = IG
-  { _cMean :: !a,
+  { -- Mean, and standard deviation of cloudiness.
+    _cMean :: !a,
     _cStdDev :: !a,
+    -- Precipitation jump probability, mean and standard deviation.
     _pJumpProb :: !a,
     _pMean :: !a,
     _pStdDev :: !a,
+    -- Temperature mean and standard deviation.
     _tMean :: !a,
     _tStdDev :: !a
   }
   deriving (Show)
 
+-- We use JSON to store the trace of the Markov chain.
 $(deriveJSON defaultOptions ''IG)
 
+-- Proposals changing individual values use lenses to modify the state.
 makeLenses ''IG
 
 type I = IG Double
 
+-- | Initial state.
 i0 :: I
 i0 = IG 0 1.0 0.5 0 1.0 0 1.0
 
+-- | The prior function.
+--
+-- > type PriorFunctionG a b = a -> Log b
 pr :: (RealFloat a) => PriorFunctionG (IG a) a
 pr (IG cm cs pj pm ps tm ts) =
   product'
@@ -63,13 +77,34 @@ pr (IG cm cs pj pm ps tm ts) =
       exponential 10.0 ts
     ]
 
-lhPrec :: (Scalar a ~ Double, RealFloat a, Mode a) => a -> a -> a -> Precipitation -> Precipitation -> Log a
+-- | The likelihood of the precipitation is composed of parts with and without
+-- precipitation.
+lhPrec ::
+  (Scalar a ~ Double, RealFloat a, Mode a) =>
+  -- | Jump probability.
+  a ->
+  -- | Mean.
+  a ->
+  -- | Standard deviation.
+  a ->
+  Precipitation ->
+  Precipitation ->
+  Log a
 lhPrec pj _ _ NoPrecipitation NoPrecipitation = Exp $ 1.0 - pj
 lhPrec pj pm ps NoPrecipitation (PrecipitationAmount x') = Exp pj * normal pm ps (auto x')
 lhPrec pj pm ps (PrecipitationAmount x) (PrecipitationAmount x') = Exp (1.0 - pj) * normal pm ps (auto $ x' - x)
 lhPrec pj pm ps (PrecipitationAmount x) NoPrecipitation = Exp pj * normal pm ps (auto x)
 
-lhStep :: (Scalar a ~ Double, RealFloat a, Mode a) => IG a -> DataPoint -> DataPoint -> Log a
+-- | For a given set of parameters, calculate the likelihood of observing
+-- weather data for two subsequent days.
+lhStep ::
+  (Scalar a ~ Double, RealFloat a, Mode a) =>
+  IG a ->
+  -- | Observed weather data at day X.
+  DataPoint ->
+  -- | Observed weather data at day (X+1).
+  DataPoint ->
+  Log a
 lhStep (IG cm cs pj pm ps tm ts) (DataPoint _ c p t) (DataPoint _ c' p' t') =
   product'
     [ normal cm cs (auto $ c' - c),
@@ -77,8 +112,10 @@ lhStep (IG cm cs pj pm ps tm ts) (DataPoint _ c p t) (DataPoint _ c' p' t') =
       normal tm ts (auto $ t' - t)
     ]
 
--- lh :: RealFloat a => WeatherData a -> LikelihoodFunctionG (I a) a
-lh :: (Scalar a ~ Double, RealFloat a, Mode a) => WeatherData -> IG a -> Log a
+-- | The likelihood function.
+--
+-- > type LikelihoodFunctionG a b = a -> Log b
+lh :: (Scalar a ~ Double, RealFloat a, Mode a) => WeatherData -> LikelihoodFunctionG (IG a) a
 lh (WeatherData xs) x = V.product $ V.zipWith (lhStep x) xs (V.tail xs)
 
 cc :: Cycle I
@@ -93,6 +130,7 @@ cc =
       tStdDev @~ scaleUnbiased 1.0 (PName "tStdDev") (pWeight 1) Tune
     ]
 
+-- | Monitor some values to standard output.
 monStd :: MonitorStdOut I
 monStd =
   monitorStdOut
@@ -149,6 +187,7 @@ predictWithDate dt (DataPoint _ c p t) (IG cm _ pj pm ps tm _) = DataPoint dt c'
 predictWeather :: WeatherData -> IO DataPoint
 predictWeather d = do
   g <- newStdGen
+  -- Settings of the Metropolis-Hastings-Green (MHG) algorithm.
   let s =
         Settings
           (AnalysisName "WeatherForecast")
@@ -160,10 +199,11 @@ predictWeather d = do
           NoSave
           LogStdOutOnly
           Info
-  -- Use the Metropolis-Hastings-Green (MHG) algorithm.
+  -- Use the MHG algorithm.
   a <- mhg s pr (lh d) cc mon i0 g
   -- Run the MCMC sampler.
   c <- mcmc s a
+  -- Post process.
   tr <- takeT nIterations $ trace $ fromMHG c
   let xs = V.map state tr
       m = getMean xs
