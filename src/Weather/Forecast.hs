@@ -84,17 +84,23 @@ lh (WeatherData xs) x = V.product $ V.zipWith (lhStep x) xs (V.tail xs)
 cc :: Cycle I
 cc =
   cycleFromList
-    [ cMean @~ slideSymmetric 1.0 (PName "cm") (pWeight 1) Tune,
-      cStdDev @~ scaleUnbiased 1.0 (PName "cs") (pWeight 1) Tune,
-      pJumpProb @~ scaleUnbiased 1.0 (PName "pj") (pWeight 1) Tune,
-      pMean @~ slideSymmetric 1.0 (PName "pm") (pWeight 1) Tune,
-      pStdDev @~ scaleUnbiased 1.0 (PName "ps") (pWeight 1) Tune,
-      tMean @~ slideSymmetric 1.0 (PName "tm") (pWeight 1) Tune,
-      tStdDev @~ scaleUnbiased 1.0 (PName "ts") (pWeight 1) Tune
+    [ cMean @~ slideSymmetric 1.0 (PName "cMean") (pWeight 1) Tune,
+      cStdDev @~ scaleUnbiased 1.0 (PName "cStdDev") (pWeight 1) Tune,
+      pJumpProb @~ scaleUnbiased 1.0 (PName "pJump") (pWeight 1) Tune,
+      pMean @~ slideSymmetric 1.0 (PName "pMean") (pWeight 1) Tune,
+      pStdDev @~ scaleUnbiased 1.0 (PName "pStdDev") (pWeight 1) Tune,
+      tMean @~ slideSymmetric 1.0 (PName "tMean") (pWeight 1) Tune,
+      tStdDev @~ scaleUnbiased 1.0 (PName "tStdDev") (pWeight 1) Tune
     ]
 
 monStd :: MonitorStdOut I
-monStd = monitorStdOut [_cMean >$< monitorDouble "cm"] 2
+monStd =
+  monitorStdOut
+    [ _cMean >$< monitorDouble "cMean",
+      _pMean >$< monitorDouble "pMean",
+      _tMean >$< monitorDouble "tMean"
+    ]
+    3
 
 mon :: Monitor I
 mon = Monitor monStd [] []
@@ -153,7 +159,7 @@ predictWeather d = do
           Sequential
           NoSave
           LogStdOutOnly
-          Quiet
+          Info
   -- Use the Metropolis-Hastings-Green (MHG) algorithm.
   a <- mhg s pr (lh d) cc mon i0 g
   -- Run the MCMC sampler.
