@@ -32,13 +32,13 @@ import System.Random (newStdGen)
 import Weather.Data
 
 data IG a = IG
-  { _cMean :: a,
-    _cStdDev :: a,
-    _pJumpProb :: a,
-    _pMean :: a,
-    _pStdDev :: a,
-    _tMean :: a,
-    _tStdDev :: a
+  { _cMean :: !a,
+    _cStdDev :: !a,
+    _pJumpProb :: !a,
+    _pMean :: !a,
+    _pStdDev :: !a,
+    _tMean :: !a,
+    _tStdDev :: !a
   }
   deriving (Show)
 
