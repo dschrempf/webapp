@@ -64,7 +64,6 @@ library
   autogen-modules: Paths_webapp
   ghc-options:
   build-depends:
-    , ad
     , aeson
     , base          >=4.7 && <5
     , bytestring
