@@ -30,20 +30,20 @@ import Mcmc.Chain.Trace
 import System.Random (newStdGen)
 import Weather.Data
 
--- | The state of the Markov chain is a set of parameters used to describe the
--- weather.
+-- | The state of the Markov chain is a set of parameters used to predict how
+-- the weather is going to change.
 --
 -- The type parameter will be instantiated to 'Double', but 'mcmc' can also find
 -- proposals using automatic differentation which requires a more general type.
 data IG a = IG
-  { -- Mean, and standard deviation of cloudiness.
+  { -- Change of cloudiness: Mean, and standard deviation.
     _cMean :: !a,
     _cStdDev :: !a,
-    -- Precipitation jump probability, mean and standard deviation.
+    -- Change in precipitation: Jump probability, mean and standard deviation.
     _pJumpProb :: !a,
     _pMean :: !a,
     _pStdDev :: !a,
-    -- Temperature mean and standard deviation.
+    -- Temperature change: Mean and standard deviation.
     _tMean :: !a,
     _tStdDev :: !a
   }
@@ -61,7 +61,7 @@ type I = IG Double
 i0 :: I
 i0 = IG 0 1.0 0.5 0 1.0 0 1.0
 
--- | The prior function.
+-- | Prior function.
 --
 -- > type PriorFunctionG a b = a -> Log b
 pr :: (RealFloat a) => PriorFunctionG (IG a) a
@@ -82,9 +82,9 @@ lhPrec ::
   (RealFloat a) =>
   -- | Jump probability.
   a ->
-  -- | Mean.
+  -- | Mean change.
   a ->
-  -- | Standard deviation.
+  -- | Standard deviation of change.
   a ->
   Precipitation ->
   Precipitation ->
@@ -99,9 +99,9 @@ lhPrec pj pm ps (PrecipitationAmount x) NoPrecipitation = Exp pj * normal pm ps 
 lhStep ::
   (RealFloat a) =>
   IG a ->
-  -- | Observed weather data at day X.
+  -- | Observed weather data at day N.
   DataPoint ->
-  -- | Observed weather data at day (X+1).
+  -- | Observed weather data at day (N+1).
   DataPoint ->
   Log a
 lhStep (IG cm cs pj pm ps tm ts) (DataPoint _ c p t) (DataPoint _ c' p' t') =
@@ -111,7 +111,7 @@ lhStep (IG cm cs pj pm ps tm ts) (DataPoint _ c p t) (DataPoint _ c' p' t') =
       normal tm ts (realToFrac $ t' - t)
     ]
 
--- | The likelihood function.
+-- | Likelihood function.
 --
 -- > type LikelihoodFunctionG a b = a -> Log b
 lh :: (RealFloat a) => WeatherData -> LikelihoodFunctionG (IG a) a
@@ -129,7 +129,7 @@ cc =
       tStdDev @~ scaleUnbiased 1.0 (PName "tStdDev") (pWeight 1) Tune
     ]
 
--- | Monitor some values to standard output.
+-- | Monitor some parameters to standard output.
 monStd :: MonitorStdOut I
 monStd =
   monitorStdOut
@@ -202,7 +202,7 @@ predictWeather d = do
   a <- mhg s pr (lh d) cc mon i0 g
   -- Run the MCMC sampler.
   c <- mcmc s a
-  -- Post process.
+  -- Process data.
   tr <- takeT nIterations $ trace $ fromMHG c
   let xs = V.map state tr
       m = getMean xs
